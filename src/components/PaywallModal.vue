@@ -1,79 +1,240 @@
 <template>
-  <div class="paywall-modal" v-if="show" @click.self="$emit('close')">
+  <div class="paywall-modal" @click.self="$emit('close')">
     <div class="modal-content">
-      <button class="modal-close" @click="$emit('close')">&times;</button>
-      <div class="modal-icon">🔒</div>
-      <h3>今日免费额度已用完</h3>
-      <p class="modal-desc">升级 Pro 解锁无限生成 + 多语言 + 邮件评分</p>
+      <button class="close-btn" @click="$emit('close')">×</button>
+      
+      <h2>解锁全部功能</h2>
+      <p class="subtitle">升级 Pro，解锁无限生成和多语言支持</p>
 
+      <!-- 订阅方案选择 -->
       <div class="plans">
-        <div class="plan free-plan">
-          <div class="plan-badge">免费版</div>
-          <div class="plan-price">¥0</div>
-          <ul class="plan-features">
-            <li>✅ 每天 3 封邮件</li>
-            <li>✅ 英语生成</li>
-            <li>✅ 垃圾邮件检测</li>
-            <li>❌ 多语言支持</li>
-            <li>❌ 邮件评分系统</li>
-            <li>❌ 对话式优化</li>
-          </ul>
-        </div>
-        <div class="plan pro-plan">
-          <div class="plan-badge hot">🔥 Pro</div>
+        <div class="plan" :class="{ selected: selectedPlan === 'monthly' }" @click="selectedPlan = 'monthly'">
+          <div class="plan-badge">推荐</div>
+          <div class="plan-name">月付</div>
           <div class="plan-price">¥49<span>/月</span></div>
-          <ul class="plan-features">
-            <li>✅ 无限量生成</li>
-            <li>✅ 6 种语言</li>
-            <li>✅ 邮件评分系统</li>
-            <li>✅ 对话式优化</li>
-            <li>✅ 模板库</li>
-            <li>✅ 优先客服</li>
-          </ul>
+          <div class="plan-desc">随时取消</div>
+        </div>
+        <div class="plan annual" :class="{ selected: selectedPlan === 'annual' }" @click="selectedPlan = 'annual'">
+          <div class="plan-save">省 ¥189</div>
+          <div class="plan-name">年付</div>
+          <div class="plan-price">¥399<span>/年</span></div>
+          <div class="plan-desc">≈ ¥33/月</div>
         </div>
       </div>
 
-      <div class="activate-section">
-        <p class="activate-label">已有激活码？</p>
-        <div class="activate-row">
-          <input v-model="activationCode" placeholder="输入 Pro 激活码" />
-          <button class="btn-activate" @click="handleActivate">激活</button>
+      <!-- 激活码兑换 -->
+      <div class="activation-section">
+        <h3>已有激活码？</h3>
+        <div class="activation-form">
+          <input 
+            v-model="activationCode" 
+            placeholder="输入激活码"
+            @keyup.enter="activateCode"
+          />
+          <button @click="activateCode" :disabled="!activationCode.trim() || activating">
+            {{ activating ? '验证中...' : '激活' }}
+          </button>
         </div>
-        <p v-if="activateMsg" :class="activateMsg.type" class="activate-msg">{{ activateMsg.text }}</p>
+        <p v-if="activationMsg" :class="activationSuccess ? 'success' : 'error'">{{ activationMsg }}</p>
+      </div>
+
+      <!-- 分隔线 -->
+      <div class="divider">
+        <span>或</span>
+      </div>
+
+      <!-- 在线支付 -->
+      <div class="payment-section">
+        <p class="payment-hint">安全支付，由 Stripe 提供保障</p>
+        <div class="payment-methods">
+          <span class="payment-icon">💳</span>
+          <span class="payment-icon">🔒</span>
+          <span class="payment-method-text">支持 Visa, Mastercard, 支付宝, 微信</span>
+        </div>
+        <button class="btn-checkout" @click="handleCheckout" :disabled="processing">
+          <span v-if="processing" class="spinner"></span>
+          {{ processing ? '跳转支付...' : `立即升级 ¥${selectedPlan === 'monthly' ? '49' : '399'}` }}
+        </button>
+        <p class="guarantee">🛡️ 7天无理由退款保证</p>
+      </div>
+
+      <!-- 分享奖励提示 -->
+      <div class="referral-hint">
+        <p>💡 <strong>邀请好友</strong>，双方都可获得奖励！</p>
+        <button class="btn-referral" @click="showReferral = true">获取推荐链接</button>
+      </div>
+
+      <!-- 推荐弹窗 -->
+      <div v-if="showReferral" class="referral-modal" @click.self="showReferral = false">
+        <div class="referral-content">
+          <button class="close-btn" @click="showReferral = false">×</button>
+          <h3>邀请好友计划</h3>
+          <p>每成功邀请 1 位好友付费，您将获得 <strong>1 个月 Pro 会员</strong></p>
+          
+          <div class="referral-link-box">
+            <input :value="referralLink" readonly />
+            <button @click="copyReferralLink">复制</button>
+          </div>
+          
+          <div class="referral-stats">
+            <div class="stat">
+              <span class="stat-num">{{ referralStats.invited }}</span>
+              <span class="stat-label">已邀请</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ referralStats.earned }}</span>
+              <span class="stat-label">已获得月数</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-const props = defineProps({
-  show: { type: Boolean, default: false }
-})
 const emit = defineEmits(['close', 'activated'])
 
+// 状态
+const selectedPlan = ref('monthly')
 const activationCode = ref('')
-const activateMsg = ref(null)
+const activationMsg = ref('')
+const activationSuccess = ref(false)
+const activating = ref(false)
+const processing = ref(false)
+const showReferral = ref(false)
 
-const handleActivate = () => {
-  if (!activationCode.value.trim()) {
-    activateMsg.value = { type: 'error', text: '请输入激活码' }
-    return
+// 推荐链接（基于用户ID生成）
+const userId = ref(localStorage.getItem('coldmail_user_id') || generateUserId())
+const referralLink = computed(() => {
+  return `https://iguoxing.github.io/cold-email-writer/?ref=${userId.value}`
+})
+
+// 推荐统计（本地模拟）
+const referralStats = ref({
+  invited: parseInt(localStorage.getItem('coldmail_invited') || '0'),
+  earned: parseInt(localStorage.getItem('coldmail_earned') || '0')
+})
+
+// 生成用户ID
+function generateUserId() {
+  const id = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8)
+  localStorage.setItem('coldmail_user_id', id)
+  return id
+}
+
+// 激活码验证（这里连接后端API）
+const activateCode = async () => {
+  if (!activationCode.value.trim()) return
+  
+  activating.value = true
+  activationMsg.value = ''
+  
+  try {
+    // 实际项目中，这里应该调用后端API验证
+    // const response = await fetch('https://your-api.com/verify', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ code: activationCode.value, userId: userId.value })
+    // })
+    
+    // 模拟验证过程
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    // 硬编码的激活码验证（仅用于演示）
+    const validCodes = {
+      'COLDMAIL-PRO-2025': { type: 'monthly', days: 30 },
+      'COLDMAIL-LAUNCH': { type: 'monthly', days: 30 },
+      'COLDMAIL-BETA': { type: 'monthly', days: 30 },
+      'COLDMAIL-YEAR': { type: 'annual', days: 365 },
+      'COLDMAIL-TEST': { type: 'monthly', days: 7 }
+    }
+    
+    const code = activationCode.value.toUpperCase().trim()
+    if (validCodes[code]) {
+      const valid = validCodes[code]
+      const expiry = new Date()
+      expiry.setDate(expiry.getDate() + valid.days)
+      
+      localStorage.setItem('coldmail_pro', JSON.stringify({
+        type: valid.type,
+        activatedAt: new Date().toISOString(),
+        expiresAt: expiry.toISOString(),
+        code: code
+      }))
+      
+      activationSuccess.value = true
+      activationMsg.value = `激活成功！${valid.type === 'annual' ? '年' : '月'}费版已激活，有效期至 ${expiry.toLocaleDateString('zh-CN')}`
+      
+      setTimeout(() => {
+        emit('activated', code)
+        emit('close')
+      }, 1500)
+    } else {
+      activationSuccess.value = false
+      activationMsg.value = '激活码无效，请检查后重试'
+    }
+  } catch (err) {
+    activationSuccess.value = false
+    activationMsg.value = '验证失败，请稍后重试'
+  } finally {
+    activating.value = false
   }
-  // 调用父组件传入的 activatePro 方法
-  emit('activated', activationCode.value.trim())
-  activateMsg.value = null
+}
+
+// Stripe Checkout
+const handleCheckout = async () => {
+  processing.value = true
+  
+  try {
+    // 实际项目中，调用后端创建 Checkout Session
+    // const response = await fetch('https://your-api.com/create-checkout', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ 
+    //     plan: selectedPlan.value,
+    //     userId: userId.value,
+    //     referralCode: new URLSearchParams(window.location.search).get('ref')
+    //   })
+    // })
+    // const { url } = await response.json()
+    // window.location.href = url
+    
+    // 演示：显示模拟支付成功
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // 模拟支付成功，激活 Pro
+    const expiry = new Date()
+    expiry.setDate(expiry.getDate() + (selectedPlan.value === 'annual' ? 365 : 30))
+    
+    localStorage.setItem('coldmail_pro', JSON.stringify({
+      type: selectedPlan.value,
+      activatedAt: new Date().toISOString(),
+      expiresAt: expiry.toISOString(),
+      paymentId: 'demo_' + Date.now()
+    }))
+    
+    alert(`✅ 支付成功！欢迎成为 Pro 会员，有效期至 ${expiry.toLocaleDateString('zh-CN')}`)
+    emit('activated', 'payment')
+    emit('close')
+  } catch (err) {
+    alert('支付失败，请稍后重试')
+  } finally {
+    processing.value = false
+  }
+}
+
+// 复制推荐链接
+const copyReferralLink = () => {
+  navigator.clipboard.writeText(referralLink.value)
+  alert('推荐链接已复制！')
 }
 </script>
 
 <style scoped>
 .paywall-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
@@ -81,124 +242,375 @@ const handleActivate = () => {
   z-index: 1000;
   padding: 20px;
 }
+
 .modal-content {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 32px;
-  max-width: 600px;
+  max-width: 480px;
   width: 100%;
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
 }
-.modal-close {
+
+.close-btn {
   position: absolute;
-  top: 12px;
+  top: 16px;
   right: 16px;
   background: none;
   border: none;
   font-size: 24px;
   cursor: pointer;
   color: #999;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
-.modal-icon {
-  text-align: center;
-  font-size: 48px;
-  margin-bottom: 8px;
+
+.close-btn:hover {
+  background: #f0f0f0;
+  color: #333;
 }
-h3 {
+
+h2 {
   text-align: center;
+  color: #0a66c2;
   margin: 0 0 4px;
-  font-size: 20px;
+  font-size: 24px;
 }
-.modal-desc {
+
+.subtitle {
   text-align: center;
   color: #666;
-  margin-bottom: 24px;
+  margin: 0 0 24px;
   font-size: 14px;
 }
+
+/* 订阅方案 */
 .plans {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 24px;
 }
+
 .plan {
-  border-radius: 12px;
-  padding: 20px;
   border: 2px solid #e0e0e0;
-}
-.pro-plan {
-  border-color: #0a66c2;
-  background: linear-gradient(135deg, #f0f7ff, #e8f0fe);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
   position: relative;
 }
+
+.plan.selected {
+  border-color: #0a66c2;
+  background: #f0f7ff;
+}
+
 .plan-badge {
-  font-size: 13px;
-  font-weight: 700;
-  color: #666;
-  margin-bottom: 8px;
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0a66c2;
+  color: white;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-weight: 600;
 }
-.plan-badge.hot {
-  color: #0a66c2;
+
+.plan-save {
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
 }
+
+.plan-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
 .plan-price {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 800;
   color: #0a66c2;
-  margin-bottom: 12px;
 }
+
 .plan-price span {
   font-size: 14px;
   font-weight: 400;
   color: #666;
 }
-.plan-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-size: 13px;
-  line-height: 2;
+
+.plan-desc {
+  font-size: 12px;
+  color: #999;
 }
-.activate-section {
-  border-top: 1px solid #e0e0e0;
-  padding-top: 16px;
+
+/* 激活码 */
+.activation-section {
+  margin-bottom: 20px;
 }
-.activate-label {
-  font-size: 13px;
+
+.activation-section h3 {
+  font-size: 14px;
   color: #666;
-  margin-bottom: 8px;
+  margin: 0 0 10px;
+  text-align: center;
 }
-.activate-row {
+
+.activation-form {
   display: flex;
   gap: 8px;
 }
-.activate-row input {
+
+.activation-form input {
   flex: 1;
-  padding: 8px 12px;
-  border: 2px solid #0a66c2;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
 }
-.btn-activate {
+
+.activation-form input:focus {
+  border-color: #0a66c2;
+  outline: none;
+}
+
+.activation-form button {
   background: #0a66c2;
   color: white;
   border: none;
-  padding: 8px 20px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.activation-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.activation-msg {
+  text-align: center;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.success { color: #2e7d32; }
+.error { color: #d93025; }
+
+/* 分隔线 */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+.divider span {
+  padding: 0 16px;
+  color: #999;
+  font-size: 13px;
+}
+
+/* 支付 */
+.payment-section {
+  text-align: center;
+}
+
+.payment-hint {
+  font-size: 12px;
+  color: #999;
+  margin: 0 0 12px;
+}
+
+.payment-methods {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.payment-icon {
+  font-size: 20px;
+}
+
+.payment-method-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.btn-checkout {
+  width: 100%;
+  background: linear-gradient(135deg, #0a66c2, #004182);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-checkout:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.guarantee {
+  font-size: 12px;
+  color: #666;
+  margin: 12px 0 0;
+}
+
+/* 推荐 */
+.referral-hint {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: center;
+}
+
+.referral-hint p {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 10px;
+}
+
+.btn-referral {
+  background: none;
+  border: 1px solid #0a66c2;
+  color: #0a66c2;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-referral:hover {
+  background: #f0f7ff;
+}
+
+/* 推荐弹窗 */
+.referral-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+}
+
+.referral-content {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 400px;
+  width: 100%;
+  position: relative;
+}
+
+.referral-content h3 {
+  text-align: center;
+  color: #0a66c2;
+  margin: 0 0 12px;
+}
+
+.referral-content p {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 20px;
+  line-height: 1.6;
+}
+
+.referral-link-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.referral-link-box input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #f8f9fa;
+}
+
+.referral-link-box button {
+  background: #0a66c2;
+  color: white;
+  border: none;
+  padding: 10px 16px;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
 }
-.activate-msg {
-  font-size: 13px;
-  margin-top: 8px;
-}
-.activate-msg.error { color: #d93025; }
-.activate-msg.success { color: #2e7d32; }
 
-@media (max-width: 500px) {
-  .plans {
-    grid-template-columns: 1fr;
-  }
+.referral-stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-num {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  color: #0a66c2;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
 }
 </style>
