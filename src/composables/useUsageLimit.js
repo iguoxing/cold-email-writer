@@ -1,27 +1,45 @@
 import { ref, computed } from 'vue'
 
 const USAGE_KEY = 'coldmail_usage'
-const PRO_KEY = 'coldmail_pro_code'
+const PRO_KEY = 'coldmail_pro'       // 与 PaywallModal 保持一致
 const FREE_DAILY_LIMIT = 3
 
-// 预设激活码（MVP 阶段，后续接入支付后替换为服务端验证）
+// 预设激活码（MVP 阶段，正式上线后改为服务端验证）
 const VALID_CODES = [
   'COLDMAIL-PRO-2025',
   'COLDMAIL-LAUNCH',
-  'COLDMAIL-BETA'
+  'COLDMAIL-BETA',
+  'COLDMAIL-YEAR',
+  'COLDMAIL-TEST'
 ]
 
 export function useUsageLimit() {
   const isPro = ref(false)
   const todayUsage = ref(0)
 
-  // 获取今日日期字符串
   const getToday = () => new Date().toISOString().split('T')[0]
 
-  // 初始化：检查 Pro 状态和用量
+  // 检查订阅是否已过期
+  const isExpired = (proData) => {
+    if (!proData || !proData.expiresAt) return true
+    return new Date(proData.expiresAt) < new Date()
+  }
+
   const initUsage = () => {
-    // 检查 Pro 激活码
-    const savedCode = localStorage.getItem(PRO_KEY)
+    // 优先读取 PaywallModal 写入的订阅数据（含过期时间）
+    try {
+      const proStr = localStorage.getItem(PRO_KEY)
+      if (proStr) {
+        const proData = JSON.parse(proStr)
+        if (!isExpired(proData)) {
+          isPro.value = true
+          return
+        }
+      }
+    } catch { /* ignore */ }
+
+    // 兜底：检查激活码（旧格式）
+    const savedCode = localStorage.getItem('coldmail_pro_code')
     if (savedCode && VALID_CODES.includes(savedCode)) {
       isPro.value = true
     }
@@ -33,7 +51,6 @@ export function useUsageLimit() {
       if (saved.date === today) {
         todayUsage.value = saved.count || 0
       } else {
-        // 新的一天，重置
         todayUsage.value = 0
         localStorage.setItem(USAGE_KEY, JSON.stringify({ date: today, count: 0 }))
       }
@@ -42,40 +59,43 @@ export function useUsageLimit() {
     }
   }
 
-  // 增加用量
   const incrementUsage = () => {
     todayUsage.value++
     localStorage.setItem(USAGE_KEY, JSON.stringify({ date: getToday(), count: todayUsage.value }))
   }
 
-  // 检查是否可以生成
   const canGenerate = computed(() => {
     return isPro.value || todayUsage.value < FREE_DAILY_LIMIT
   })
 
-  // 剩余免费次数
   const remainingFree = computed(() => {
     if (isPro.value) return Infinity
     return Math.max(0, FREE_DAILY_LIMIT - todayUsage.value)
   })
 
-  // 激活 Pro
+  // 激活（写完整订阅对象，与 PaywallModal 一致）
   const activatePro = (code) => {
     if (VALID_CODES.includes(code)) {
+      const days = code === 'COLDMAIL-YEAR' ? 365 : 30
+      const expiry = new Date()
+      expiry.setDate(expiry.getDate() + days)
+      localStorage.setItem(PRO_KEY, JSON.stringify({
+        type: days === 365 ? 'annual' : 'monthly',
+        activatedAt: new Date().toISOString(),
+        expiresAt: expiry.toISOString(),
+        code
+      }))
       isPro.value = true
-      localStorage.setItem(PRO_KEY, code)
       return { success: true, msg: '激活成功！已解锁全部功能。' }
     }
     return { success: false, msg: '激活码无效，请检查后重试。' }
   }
 
-  // 取消 Pro
   const deactivatePro = () => {
     isPro.value = false
     localStorage.removeItem(PRO_KEY)
   }
 
-  // 初始化
   initUsage()
 
   return {

@@ -2,11 +2,29 @@ import { ref, watch } from 'vue'
 
 const POLLINATIONS_URL = 'https://text.pollinations.ai/'
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const DEFAULT_TIMEOUT = 30000 // 30秒超时
 
 const apiMode = ref('pollinations')
 const apiKey = ref('')
 const apiEndpoint = ref('')
 const apiStatus = ref(null)
+
+// 带超时的 fetch 封装
+const fetchWithTimeout = async (url, options = {}, timeout = DEFAULT_TIMEOUT) => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal })
+    clearTimeout(timer)
+    return res
+  } catch (err) {
+    clearTimeout(timer)
+    if (err.name === 'AbortError') {
+      throw new Error('请求超时（30秒），请检查网络后重试')
+    }
+    throw err
+  }
+}
 
 export function useAI() {
   const initAPIConfig = () => {
@@ -36,7 +54,7 @@ export function useAI() {
   // Pollinations.ai 免费 AI 调用（无需 API Key）
   const callPollinations = async (prompt) => {
     const url = POLLINATIONS_URL + encodeURIComponent(prompt) + '?model=openai'
-    const res = await fetch(url)
+    const res = await fetchWithTimeout(url)
     if (!res.ok) {
       if (res.status === 429) throw new Error('请求过于频繁，请稍等几秒后重试')
       throw new Error(`Pollinations API 错误 ${res.status}`)
@@ -52,7 +70,7 @@ export function useAI() {
       generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
     }
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -85,7 +103,7 @@ export function useAI() {
     const headers = { 'Content-Type': 'application/json' }
     if (apiKey.value) headers['Authorization'] = `Bearer ${apiKey.value}`
 
-    const res = await fetch(apiEndpoint.value, {
+    const res = await fetchWithTimeout(apiEndpoint.value, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -125,7 +143,7 @@ export function useAI() {
       }
 
       if (apiMode.value === 'pollinations') {
-        const res = await fetch(POLLINATIONS_URL + encodeURIComponent('Reply with just: OK') + '?model=openai')
+        const res = await fetchWithTimeout(POLLINATIONS_URL + encodeURIComponent('Reply with just: OK') + '?model=openai')
         apiStatus.value = res.ok
           ? { type: 'success', msg: 'Pollinations AI 连接成功！无需 API Key。' }
           : { type: 'error', msg: `连接失败：${res.status}` }
@@ -142,7 +160,7 @@ export function useAI() {
           contents: [{ parts: [{ text: 'Reply with just: OK' }] }],
           generationConfig: { maxOutputTokens: 10 }
         }
-        const res = await fetch(url, {
+        const res = await fetchWithTimeout(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -165,7 +183,7 @@ export function useAI() {
       }
       const headers = { 'Content-Type': 'application/json' }
       if (apiKey.value) headers['Authorization'] = `Bearer ${apiKey.value}`
-      const res = await fetch(apiEndpoint.value, { method: 'POST', headers, body: JSON.stringify(body) })
+      const res = await fetchWithTimeout(apiEndpoint.value, { method: 'POST', headers, body: JSON.stringify(body) })
       apiStatus.value = res.ok
         ? { type: 'success', msg: 'API 连接成功！' }
         : { type: 'error', msg: `连接失败：${res.status}` }
@@ -176,7 +194,6 @@ export function useAI() {
 
   return {
     apiMode, apiKey, apiEndpoint, apiStatus,
-    initAPIConfig, callAI, testAPI,
-    POLLINATIONS_URL, GEMINI_ENDPOINT
+    initAPIConfig, callAI, testAPI
   }
 }

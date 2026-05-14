@@ -1,0 +1,16 @@
+{
+  "name": "ColdMail AI",
+  "short_name": "ColdMail",
+  "description": "AI驱动的多语言外贸开发信生成器",
+  "start_url": "/cold-email-writer/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a66c2",
+  "icons": [
+    {
+      "src": "/cold-email-writer/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

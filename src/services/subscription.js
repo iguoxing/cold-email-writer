@@ -131,12 +131,7 @@ export function useSubscription() {
 
     localStorage.setItem(STORAGE_KEYS.PRO, JSON.stringify(subscription))
 
-    // 扣减激活码使用次数（实际需要服务端操作）
-    if (config.uses !== undefined) {
-      config.uses--
-    }
-
-    // 追踪激活
+    // 追踪激活（实际需服务端扣减使用次数）
     trackActivation(code, config.type)
 
     return {

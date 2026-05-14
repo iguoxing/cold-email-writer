@@ -15,9 +15,7 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // 初始化 Stripe（替换为你的 Stripe Secret Key）
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_demo', {
-  apiVersion: '2023-10-16'
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_demo')
 
 // 初始化 Supabase（替换为你的 Supabase URL 和 Key）
 const supabase = createClient(
@@ -27,6 +25,41 @@ const supabase = createClient(
 
 // 中间件
 app.use(cors())
+
+// Webhook 必须在 express.json() 之前注册（Stripe 需要 raw body 验签）
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature']
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  let event
+  try {
+    if (webhookSecret) {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret)
+    } else {
+      event = JSON.parse(req.body)
+    }
+  } catch (err) {
+    console.error('Webhook 签名验证失败:', err.message)
+    return res.status(400).send(`Webhook Error: ${err.message}`)
+  }
+  switch (event.type) {
+    case 'checkout.session.completed':
+      await handleCheckoutCompleted(event.data.object)
+      break
+    case 'customer.subscription.updated':
+      await handleSubscriptionUpdated(event.data.object)
+      break
+    case 'customer.subscription.deleted':
+      await handleSubscriptionDeleted(event.data.object)
+      break
+    case 'invoice.payment_failed':
+      await handlePaymentFailed(event.data.object)
+      break
+    default:
+      console.log(`未处理的事件类型: ${event.type}`)
+  }
+  res.json({ received: true })
+})
+
 app.use(express.json())
 
 // 激活码映射（实际应该存储在数据库中）
@@ -249,56 +282,6 @@ app.post('/api/create-portal', async (req, res) => {
   }
 })
 
-/**
- * POST /api/webhook
- * Stripe Webhook 处理器
- */
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature']
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-
-  let event
-
-  try {
-    if (webhookSecret) {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret)
-    } else {
-      event = JSON.parse(req.body)
-    }
-  } catch (err) {
-    console.error('Webhook 签名验证失败:', err.message)
-    return res.status(400).send(`Webhook Error: ${err.message}`)
-  }
-
-  // 处理事件
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object
-      await handleCheckoutCompleted(session)
-      break
-
-    case 'customer.subscription.updated':
-      const subscription = event.data.object
-      await handleSubscriptionUpdated(subscription)
-      break
-
-    case 'customer.subscription.deleted':
-      const deletedSub = event.data.object
-      await handleSubscriptionDeleted(deletedSub)
-      break
-
-    case 'invoice.payment_failed':
-      const invoice = event.data.object
-      await handlePaymentFailed(invoice)
-      break
-
-    default:
-      console.log(`未处理的事件类型: ${event.type}`)
-  }
-
-  res.json({ received: true })
-})
-
 // Webhook 处理函数
 async function handleCheckoutCompleted(session) {
   const { userId, plan, referralCode } = session.metadata
@@ -323,7 +306,7 @@ async function handleCheckoutCompleted(session) {
 
   // 奖励推荐人
   if (referralCode) {
-    await awardReferrer(referrerCode)
+    await awardReferrer(referralCode)
   }
 
   // 记录转化

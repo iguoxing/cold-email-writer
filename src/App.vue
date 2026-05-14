@@ -1,7 +1,7 @@
 <template>
-  <div class="app" :class="{ 'has-nav': activePage !== 'pricing' }">
-    <!-- 导航栏 -->
-    <nav class="nav">
+  <div class="app" :class="{ 'has-nav': activePage !== 'pricing' && activePage !== 'landing' }">
+    <!-- 导航栏（隐藏 LandingPage 时显示） -->
+    <nav v-if="activePage !== 'landing'" class="nav">
       <div class="nav-inner">
         <span class="nav-logo" @click="activePage = 'writer'">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
@@ -19,6 +19,13 @@
       </div>
     </nav>
 
+    <!-- LandingPage 落地页 -->
+    <LandingPage
+      v-if="activePage === 'landing'"
+      @startFree="startWriting"
+      @upgrade="activePage = 'pricing'"
+    />
+
     <!-- 邮件生成页 -->
     <main v-if="activePage==='writer'" class="main">
       <div class="writer-container">
@@ -31,7 +38,7 @@
           <div class="api-panel-content">
             <div class="api-tabs">
               <button class="api-tab" :class="{active: apiMode==='pollinations'}" @click="apiMode='pollinations'">🤖 免费 AI</button>
-              <button class="api-tab" :class="{active: apiMode==='free'}" @click="apiMode='free'">🔑 Gemini API</button>
+              <button class="api-tab" :class="{active: apiMode==='free'}" @click="apiMode='free'">🔑 Gemini</button>
               <button class="api-tab" :class="{active: apiMode==='custom'}" @click="apiMode='custom'">⚙️ 自定义 API</button>
             </div>
 
@@ -185,13 +192,15 @@ import LanguageSelector from './components/LanguageSelector.vue'
 import EmailScorer from './components/EmailScorer.vue'
 import PricingPage from './components/PricingPage.vue'
 import PaywallModal from './components/PaywallModal.vue'
+import LandingPage from './components/LandingPage.vue'
 import { useAI } from './composables/useAI.js'
 import { useSpamDetector } from './composables/useSpamDetector.js'
 import { useEmailHistory } from './composables/useEmailHistory.js'
 import { useUsageLimit } from './composables/useUsageLimit.js'
+import analytics from './services/analytics.js'
 
 // 页面状态
-const activePage = ref('writer')
+const activePage = ref('landing') // 默认显示落地页
 const showPaywall = ref(false)
 const toastMsg = ref('')
 const showToast = ref(false)
@@ -220,7 +229,16 @@ const messages = ref([])
 // 初始化
 onMounted(() => {
   initAPIConfig()
+  // 页面浏览统计
+  if (activePage.value === 'landing') {
+    analytics.track('page_view', { page: 'landing' })
+  }
 })
+
+const startWriting = () => {
+  activePage.value = 'writer'
+  analytics.track('cta_click', { cta: 'start_free' })
+}
 
 const styleLabel = (style) => {
   const map = { direct: '🎯 直接高效型', friendly: '🤝 友好亲和型', value: '💡 价值驱动型', balanced: '⚖️ 均衡' }
@@ -232,8 +250,16 @@ const riskLabel = (level) => {
   return map[level] || level
 }
 
+const escapeHtml = (str) => str
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+
 const formatBody = (body) => {
-  return body.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  return escapeHtml(body)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>')
 }
 
 // 语言名称映射
@@ -295,18 +321,21 @@ Requirements:
 const generateMessages = async () => {
   // 检查免费用户语言限制
   if (!isPro.value && targetLang.value !== 'en') {
+    analytics.track('upgrade_trigger', { reason: 'multi_lang' })
     showPaywall.value = true
     return
   }
 
   // 检查用量
   if (!canGenerate.value) {
+    analytics.track('upgrade_trigger', { reason: 'usage_limit' })
     showPaywall.value = true
     return
   }
 
   generating.value = true
   messages.value = []
+  analytics.track('generate_start', { lang: targetLang.value, style: stylePref.value })
 
   try {
     let styles = []
@@ -334,7 +363,14 @@ const generateMessages = async () => {
       messages: JSON.parse(JSON.stringify(messages.value))
     })
 
+    analytics.track('generate_success', {
+      lang: targetLang.value,
+      count: messages.value.length,
+      styles: messages.value.map(m => m.style)
+    })
+
   } catch (err) {
+    analytics.track('generate_error', { error: err.message })
     toastMsg.value = '生成失败：' + err.message
     showToast.value = true
     setTimeout(() => showToast.value = false, 4000)
@@ -346,6 +382,7 @@ const generateMessages = async () => {
 // 重新生成单条
 const regenerateOne = async (idx) => {
   if (!canGenerate.value) {
+    analytics.track('upgrade_trigger', { reason: 'regenerate_limit' })
     showPaywall.value = true
     return
   }

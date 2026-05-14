@@ -320,7 +320,7 @@
           <a href="#">隐私政策</a>
           <a href="#">使用条款</a>
         </div>
-        <p class="footer-copy">© 2024 ColdMail AI. All rights reserved.</p>
+        <p class="footer-copy">© {{ year }} ColdMail AI. All rights reserved.</p>
       </div>
     </footer>
   </div>
@@ -328,6 +328,7 @@
 
 <script setup>
 defineEmits(['startFree', 'upgrade'])
+const year = new Date().getFullYear()
 </script>
 
 <style scoped>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://iguoxing.github.io/cold-email-writer/sitemap.xml
