@@ -221,22 +221,22 @@ const handleCheckout = async () => {
       throw new Error(data.error || '创建支付链接失败')
     }
 
-    // 无后端时：直接用 Stripe Payment Links（需要在 Stripe 控制台创建）
-    // 格式: https://buy.stripe.com/xxxx
-    // 在 Stripe Dashboard → Payment Links 创建，填入下方链接
+    // Stripe Payment Links（Stripe Dashboard → Payment Links 创建后填入）
+    // 月付 ¥49/月: https://buy.stripe.com/xxx
+    // 年付 ¥399/年: https://buy.stripe.com/xxx
     const STRIPE_PAYMENT_LINKS = {
-      monthly: 'https://buy.stripe.com/test_monthly', // ← 替换为你的 Stripe Payment Link
-      annual:  'https://buy.stripe.com/test_annual'   // ← 替换为你的 Stripe Payment Link
+      monthly: '', // ← 创建后替换，如: 'https://buy.stripe.com/7sXyZz...'
+      annual:  ''  // ← 创建后替换，如: 'https://buy.stripe.com/9aBbCc...'
     }
 
     const link = STRIPE_PAYMENT_LINKS[selectedPlan.value]
-    if (link && !link.includes('test_')) {
+    if (link && link.trim()) {
       // 附加用户 ID 用于 webhook 识别
       window.location.href = `${link}?client_reference_id=${userId.value}`
       return
     }
 
-    // 最终 fallback：模拟支付成功（演示用）
+    // 无 Payment Link 时：模拟支付成功（演示用）
     await new Promise(resolve => setTimeout(resolve, 1500))
     const expiry = new Date()
     expiry.setDate(expiry.getDate() + (selectedPlan.value === 'annual' ? 365 : 30))
