@@ -221,12 +221,12 @@ const handleCheckout = async () => {
       throw new Error(data.error || '创建支付链接失败')
     }
 
-    // Stripe Payment Links（Stripe Dashboard → Payment Links 创建后填入）
-    // 月付 ¥49/月: https://buy.stripe.com/xxx
-    // 年付 ¥399/年: https://buy.stripe.com/xxx
+    // ===== Stripe Payment Links =====
+    // 月付 ¥49/月
+    // 年付 ¥399/年
     const STRIPE_PAYMENT_LINKS = {
-      monthly: '', // ← 创建后替换，如: 'https://buy.stripe.com/7sXyZz...'
-      annual:  ''  // ← 创建后替换，如: 'https://buy.stripe.com/9aBbCc...'
+      monthly: 'https://buy.stripe.com/test_dRm00k8Cc4YO8Mugxn4ow00',
+      annual:  'https://buy.stripe.com/test_bJe00kaKk0Iy1k21Ct4ow01'
     }
 
     const link = STRIPE_PAYMENT_LINKS[selectedPlan.value]
