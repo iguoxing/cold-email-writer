@@ -97,6 +97,19 @@ import { ref, computed } from 'vue'
 
 const emit = defineEmits(['close', 'activated'])
 
+// ===== Stripe Price ID 配置 =====
+// cold-email-writer Month ¥49/月
+// cold-email-writer Year  ¥399/年
+const STRIPE_PRICES = {
+  monthly: 'price_1TWykjIUUdrFmAAWXxMusmMi',
+  annual:  'price_1TWyleIUUdrFmAAWmC5dUzZB'
+}
+
+// ===== 后端 API 地址（部署后替换） =====
+// 本地开发: http://localhost:3001
+// 生产环境: 填入你的 Railway/Render API 地址
+const API_BASE = import.meta.env.VITE_API_BASE || null
+
 // 状态
 const selectedPlan = ref('monthly')
 const activationCode = ref('')
@@ -188,37 +201,58 @@ const handleCheckout = async () => {
   processing.value = true
   
   try {
-    // 实际项目中，调用后端创建 Checkout Session
-    // const response = await fetch('https://your-api.com/create-checkout', {
-    //   method: 'POST',
-    //   body: JSON.stringify({ 
-    //     plan: selectedPlan.value,
-    //     userId: userId.value,
-    //     referralCode: new URLSearchParams(window.location.search).get('ref')
-    //   })
-    // })
-    // const { url } = await response.json()
-    // window.location.href = url
-    
-    // 演示：显示模拟支付成功
+    // 有后端 API 时：调用后端创建 Checkout Session
+    if (API_BASE) {
+      const response = await fetch(`${API_BASE}/api/create-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          plan: selectedPlan.value,
+          priceId: STRIPE_PRICES[selectedPlan.value],
+          userId: userId.value,
+          referralCode: new URLSearchParams(window.location.search).get('ref') || ''
+        })
+      })
+      const data = await response.json()
+      if (data.url) {
+        window.location.href = data.url
+        return
+      }
+      throw new Error(data.error || '创建支付链接失败')
+    }
+
+    // 无后端时：直接用 Stripe Payment Links（需要在 Stripe 控制台创建）
+    // 格式: https://buy.stripe.com/xxxx
+    // 在 Stripe Dashboard → Payment Links 创建，填入下方链接
+    const STRIPE_PAYMENT_LINKS = {
+      monthly: 'https://buy.stripe.com/test_monthly', // ← 替换为你的 Stripe Payment Link
+      annual:  'https://buy.stripe.com/test_annual'   // ← 替换为你的 Stripe Payment Link
+    }
+
+    const link = STRIPE_PAYMENT_LINKS[selectedPlan.value]
+    if (link && !link.includes('test_')) {
+      // 附加用户 ID 用于 webhook 识别
+      window.location.href = `${link}?client_reference_id=${userId.value}`
+      return
+    }
+
+    // 最终 fallback：模拟支付成功（演示用）
     await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // 模拟支付成功，激活 Pro
     const expiry = new Date()
     expiry.setDate(expiry.getDate() + (selectedPlan.value === 'annual' ? 365 : 30))
-    
     localStorage.setItem('coldmail_pro', JSON.stringify({
       type: selectedPlan.value,
       activatedAt: new Date().toISOString(),
       expiresAt: expiry.toISOString(),
+      priceId: STRIPE_PRICES[selectedPlan.value],
       paymentId: 'demo_' + Date.now()
     }))
-    
-    alert(`✅ 支付成功！欢迎成为 Pro 会员，有效期至 ${expiry.toLocaleDateString('zh-CN')}`)
+    alert(`✅ 演示模式：Pro 已激活，有效期至 ${expiry.toLocaleDateString('zh-CN')}\n\n正式上线请配置 Stripe Payment Link 或后端 API。`)
     emit('activated', 'payment')
     emit('close')
+
   } catch (err) {
-    alert('支付失败，请稍后重试')
+    alert('支付失败：' + (err.message || '请稍后重试'))
   } finally {
     processing.value = false
   }

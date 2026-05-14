@@ -42,9 +42,11 @@ const ACTIVATION_CODES = {
 }
 
 // 产品 ID 映射
+// cold-email-writer month ¥49/月: price_1TWykjIUUdrFmAAWXxMusmMi
+// cold-email-writer year  ¥399/年: price_1TWyleIUUdrFmAAWmC5dUzZB
 const PRICE_IDS = {
-  monthly: process.env.STRIPE_MONTHLY_PRICE_ID || 'price_monthly_demo',
-  annual: process.env.STRIPE_ANNUAL_PRICE_ID || 'price_annual_demo'
+  monthly: process.env.STRIPE_MONTHLY_PRICE_ID || 'price_1TWykjIUUdrFmAAWXxMusmMi',
+  annual:  process.env.STRIPE_ANNUAL_PRICE_ID  || 'price_1TWyleIUUdrFmAAWmC5dUzZB'
 }
 
 // ==================== 激活码 API ====================
