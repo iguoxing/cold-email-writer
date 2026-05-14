@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ColdMail AI - 设置</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      padding: 24px;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #0a66c2;
+      font-size: 22px;
+      margin-bottom: 24px;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .section h2 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    .field {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #666;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    input:focus { border-color: #0a66c2; outline: none; }
+    .btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: #0a66c2; color: white; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-outline { background: white; border: 1px solid #0a66c2; color: #0a66c2; }
+    .msg { font-size: 13px; margin-top: 8px; }
+    .msg.success { color: #2e7d32; }
+    .msg.error { color: #d93025; }
+    .info {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+    .info a { color: #0a66c2; text-decoration: none; font-weight: 600; }
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ ColdMail AI 设置</h1>
+
+    <div class="section">
+      <h2>🤖 AI 接口配置</h2>
+      <div class="field">
+        <label>API 模式</label>
+        <select id="api-mode">
+          <option value="pollinations">免费 AI（Pollinations，开箱即用）</option>
+          <option value="free">Gemini API（免费 Key）</option>
+          <option value="custom">自定义 OpenAI 兼容 API</option>
+        </select>
+      </div>
+      <div id="key-field" class="field" style="display:none">
+        <label>Gemini API Key</label>
+        <div class="row">
+          <input id="api-key" type="password" placeholder="AIza..." />
+          <button id="btn-test" class="btn btn-outline">测试</button>
+        </div>
+        <p class="info">免费获取：<a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a></p>
+      </div>
+      <div id="custom-field" class="field" style="display:none">
+        <label>API Endpoint</label>
+        <input id="api-endpoint" placeholder="https://api.example.com/v1/chat/completions" />
+      </div>
+      <p id="api-msg" class="msg"></p>
+    </div>
+
+    <div class="section">
+      <h2>💎 Pro 激活</h2>
+      <div class="field">
+        <label>激活码</label>
+        <div class="row">
+          <input id="pro-code" placeholder="输入 Pro 激活码" />
+          <button id="btn-activate" class="btn btn-primary">激活</button>
+        </div>
+      </div>
+      <p id="pro-status" class="msg"></p>
+      <div class="info">Pro 功能：无限生成、6种语言、邮件评分、对话优化</div>
+    </div>
+
+    <div class="section">
+      <h2>ℹ️ 关于</h2>
+      <p class="info">
+        ColdMail AI v1.0.0<br>
+        AI 驱动的多语言外贸开发信生成器<br>
+        数据存储在浏览器本地，不上传任何服务器
+      </p>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

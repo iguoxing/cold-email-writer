@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=400, initial-scale=1.0">
+  <title>ColdMail AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部 -->
+    <header class="header">
+      <div class="header-left">
+        <span class="logo">✉️</span>
+        <span class="title">ColdMail AI</span>
+      </div>
+      <div class="header-right">
+        <span id="usage-badge" class="usage-badge">加载中...</span>
+        <button id="btn-settings" class="btn-icon" title="设置">⚙️</button>
+      </div>
+    </header>
+
+    <!-- 语言选择 -->
+    <div class="lang-row">
+      <button class="lang-btn active" data-lang="en">🇬🇧 EN</button>
+      <button class="lang-btn" data-lang="fr">🇫🇷 FR</button>
+      <button class="lang-btn" data-lang="ar">🇸🇦 AR</button>
+      <button class="lang-btn" data-lang="es">🇪🇸 ES</button>
+      <button class="lang-btn" data-lang="ru">🇷🇺 RU</button>
+      <button class="lang-btn" data-lang="pt">🇧🇷 PT</button>
+    </div>
+
+    <!-- 输入区 -->
+    <div class="form">
+      <textarea id="input" placeholder="输入中文需求，如：我是做机械出口的，想联系美国分销商..." rows="4"></textarea>
+      <div class="options">
+        <input id="industry" placeholder="目标行业" />
+        <input id="role" placeholder="目标角色" />
+      </div>
+      <div class="style-row">
+        <button class="style-btn active" data-style="balanced">⚖️ 均衡</button>
+        <button class="style-btn" data-style="direct">🎯 直接</button>
+        <button class="style-btn" data-style="friendly">🤝 友好</button>
+        <button class="style-btn" data-style="value">💡 价值</button>
+      </div>
+      <button id="btn-generate" class="btn-generate">🚀 生成开发信</button>
+    </div>
+
+    <!-- 结果区 -->
+    <div id="results" class="results" style="display:none">
+      <div id="result-cards"></div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div id="loading" class="loading" style="display:none">
+      <div class="spinner"></div>
+      <span>AI 生成中...</span>
+    </div>
+
+    <!-- 付费提示 -->
+    <div id="paywall" class="paywall" style="display:none">
+      <p>🔒 今日免费额度已用完</p>
+      <div class="activate-row">
+        <input id="activate-code" placeholder="输入 Pro 激活码" />
+        <button id="btn-activate" class="btn-activate">激活</button>
+      </div>
+      <p id="activate-msg" class="activate-msg"></p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
