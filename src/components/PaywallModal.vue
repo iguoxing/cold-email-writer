@@ -128,7 +128,7 @@ const showReferral = ref(false)
 // 推荐链接（基于用户ID生成）
 const userId = ref(localStorage.getItem('coldmail_user_id') || generateUserId())
 const referralLink = computed(() => {
-  return `https://coach.zhaoguoxing.com/?ref=${userId.value}`
+  return `https://mail.zhaoguoxing.com/?ref=${userId.value}`
 })
 
 // 推荐统计（本地模拟）

@@ -404,9 +404,9 @@ export function useEmailAutomation() {
 
     // 替换通用变量
     const replacements = {
-      app_url: 'https://iguoxing.github.io/cold-email-writer/',
-      upgrade_url: 'https://iguoxing.github.io/cold-email-writer/?tab=pricing',
-      referral_url: 'https://iguoxing.github.io/cold-email-writer/?tab=referral'
+      app_url: 'https://mail.zhaoguoxing.com/',
+      upgrade_url: 'https://mail.zhaoguoxing.com/?tab=pricing',
+      referral_url: 'https://mail.zhaoguoxing.com/?tab=referral'
     }
 
     for (const [key, value] of Object.entries(replacements)) {
