@@ -1,5 +1,5 @@
 <template>
-  <div class="paywall-modal" @click.self="$emit('close')">
+  <div v-if="show" class="paywall-modal" @click.self="$emit('close')">
     <div class="modal-content">
       <button class="close-btn" @click="$emit('close')">×</button>
       
@@ -96,6 +96,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+
+const props = defineProps({
+  show: { type: Boolean, default: false }
+})
 
 const emit = defineEmits(['close', 'activated'])
 
