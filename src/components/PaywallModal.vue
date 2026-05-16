@@ -1,5 +1,5 @@
 <template>
-  <div class="paywall-modal" @click.self="$emit('close')">
+  <div v-if="show" class="paywall-modal" @click.self="$emit('close')">
     <div class="modal-content">
       <button class="close-btn" @click="$emit('close')">×</button>
       
@@ -64,36 +64,42 @@
         <button class="btn-referral" @click="showReferral = true">获取推荐链接</button>
       </div>
 
-      <!-- 推荐弹窗 -->
-      <div v-if="showReferral" class="referral-modal" @click.self="showReferral = false">
-        <div class="referral-content">
-          <button class="close-btn" @click="showReferral = false">×</button>
-          <h3>邀请好友计划</h3>
-          <p>每成功邀请 1 位好友付费，您将获得 <strong>1 个月 Pro 会员</strong></p>
-          
-          <div class="referral-link-box">
-            <input :value="referralLink" readonly />
-            <button @click="copyReferralLink">复制</button>
-          </div>
-          
-          <div class="referral-stats">
-            <div class="stat">
-              <span class="stat-num">{{ referralStats.invited }}</span>
-              <span class="stat-label">已邀请</span>
+      <!-- 推荐弹窗（移到外部，避免遮住关闭按钮） -->
+      <Teleport to="body">
+        <div v-if="showReferral" class="referral-modal" @click.self="showReferral = false">
+          <div class="referral-content">
+            <button class="close-btn referral-close" @click="showReferral = false">×</button>
+            <h3>邀请好友计划</h3>
+            <p>每成功邀请 1 位好友付费，您将获得 <strong>1 个月 Pro 会员</strong></p>
+
+            <div class="referral-link-box">
+              <input :value="referralLink" readonly />
+              <button @click="copyReferralLink">复制</button>
             </div>
-            <div class="stat">
-              <span class="stat-num">{{ referralStats.earned }}</span>
-              <span class="stat-label">已获得月数</span>
+
+            <div class="referral-stats">
+              <div class="stat">
+                <span class="stat-num">{{ referralStats.invited }}</span>
+                <span class="stat-label">已邀请</span>
+              </div>
+              <div class="stat">
+                <span class="stat-num">{{ referralStats.earned }}</span>
+                <span class="stat-label">已获得月数</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Teleport>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+
+const props = defineProps({
+  show: { type: Boolean, default: false }
+})
 
 const emit = defineEmits(['close', 'activated'])
 
@@ -122,7 +128,7 @@ const showReferral = ref(false)
 // 推荐链接（基于用户ID生成）
 const userId = ref(localStorage.getItem('coldmail_user_id') || generateUserId())
 const referralLink = computed(() => {
-  return `https://iguoxing.github.io/cold-email-writer/?ref=${userId.value}`
+  return `https://mail.zhaoguoxing.com/?ref=${userId.value}`
 })
 
 // 推荐统计（本地模拟）
@@ -566,7 +572,7 @@ h2 {
   background: #f0f7ff;
 }
 
-/* 推荐弹窗 */
+/* 推荐弹窗（Teleport 到 body，避免遮住父弹窗关闭按钮） */
 .referral-modal {
   position: fixed;
   inset: 0;
@@ -574,7 +580,7 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  z-index: 2000;
   padding: 20px;
 }
 
@@ -585,6 +591,10 @@ h2 {
   max-width: 400px;
   width: 100%;
   position: relative;
+}
+
+.referral-close {
+  z-index: 2001;
 }
 
 .referral-content h3 {

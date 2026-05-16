@@ -220,8 +220,8 @@ app.post('/api/create-checkout', async (req, res) => {
       return res.status(400).json({ error: '无效的订阅方案' })
     }
 
-    const successUrl = `${process.env.APP_URL || 'https://iguoxing.github.io/cold-email-writer'}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${process.env.APP_URL || 'https://iguoxing.github.io/cold-email-writer'}/?checkout=cancelled`
+    const successUrl = `${process.env.APP_URL || 'https://mail.zhaoguoxing.com'}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${process.env.APP_URL || 'https://mail.zhaoguoxing.com'}/?checkout=cancelled`
 
     // 创建 Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({

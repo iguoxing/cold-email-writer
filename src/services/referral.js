@@ -25,7 +25,7 @@ export function useReferralSystem() {
   }
 
   // 生成推荐链接
-  function getReferralLink(baseUrl = 'https://iguoxing.github.io/cold-email-writer/') {
+  function getReferralLink(baseUrl = 'https://mail.zhaoguoxing.com/') {
     return `${baseUrl}?ref=${userId}`
   }
 
